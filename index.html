@@ -1,0 +1,497 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shared Ride Study</title>
+<style>
+  :root {
+    --bg: #f5f5f2;
+    --card: #ffffff;
+    --ink: #1c1c1e;
+    --muted: #66666b;
+    --line: #d9d9d4;
+    --accent: #2f5d50;
+    --accent-ink: #ffffff;
+    --err: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 20px 16px 48px; }
+  .progress { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: 20px; }
+  .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .3s ease; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px 20px; }
+  h1 { font-size: 1.3rem; margin: 0 0 14px; line-height: 1.3; }
+  p { margin: 0 0 14px; }
+  .muted { color: var(--muted); font-size: .92rem; }
+  .scenario p { font-size: 1.04rem; }
+  .scenario .payline { font-weight: 600; }
+
+  .q { margin: 0 0 30px; }
+  .q:last-of-type { margin-bottom: 18px; }
+  .q-label { font-weight: 600; margin-bottom: 10px; }
+
+  .scale { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .scale label, .choices label { position: relative; cursor: pointer; }
+  .scale input, .choices input { position: absolute; opacity: 0; pointer-events: none; }
+  .scale span {
+    display: block; text-align: center; padding: 10px 0;
+    border: 1px solid var(--line); border-radius: 8px; background: #fff; font-weight: 600;
+  }
+  .scale input:checked + span, .choices input:checked + span {
+    background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
+  }
+  .scale input:focus-visible + span, .choices input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .anchors { display: flex; justify-content: space-between; gap: 16px; margin-top: 6px; font-size: .84rem; color: var(--muted); }
+  .anchors span:last-child { text-align: right; }
+
+  .choices { display: grid; gap: 8px; }
+  .choices span { display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+
+  input[type=text], input[type=number] {
+    width: 100%; font: inherit; padding: 11px 12px;
+    border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink);
+  }
+  input[type=text]:focus, input[type=number]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .check { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0 4px; cursor: pointer; }
+  .check input { margin-top: 5px; width: 18px; height: 18px; flex: none; }
+
+  .err { color: var(--err); font-size: .92rem; min-height: 1.4em; margin: 6px 0 10px; }
+  .btn {
+    display: block; width: 100%; padding: 13px 16px; font: inherit; font-weight: 600;
+    background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; cursor: pointer;
+  }
+  .btn:disabled { background: #a9b7b2; cursor: not-allowed; }
+
+  /* Payment screens */
+  .pay-intro { margin-bottom: 18px; }
+  .phone {
+    width: 100%; max-width: 340px; margin: 0 auto; background: #fff;
+    border: 1px solid #c9c9c9; border-radius: 14px; overflow: hidden;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .phone .pay-err { color: var(--err); font-size: .85rem; text-align: center; min-height: 1.3em; margin: 8px 12px 0; }
+  .sent { text-align: center; color: #1b7f3b; font-weight: 600; padding: 4px 0 14px; }
+
+  /* Uber in-app split */
+  .uber { padding: 18px 16px 20px; color: #111; }
+  .uber-title { text-align: center; font-weight: 600; font-size: 1.05rem; padding-bottom: 12px; border-bottom: 1px solid #eee; }
+  .uber-ride { display: flex; align-items: center; gap: 12px; margin: 14px 0; padding: 12px; border: 2px solid #111; border-radius: 10px; }
+  .uber-ride svg { flex: none; }
+  .uber-name { font-weight: 600; }
+  .uber-sub { font-size: .82rem; color: #6b6b6b; }
+  .uber-price { margin-left: auto; font-weight: 600; }
+  .uber-card { display: flex; align-items: center; gap: 10px; padding: 10px 2px 14px; border-bottom: 1px solid #eee; font-size: .92rem; }
+  .visa { font-size: .62rem; font-weight: 800; font-style: italic; color: #fff; background: #1a1f71; padding: 3px 6px; border-radius: 3px; letter-spacing: .5px; }
+  .uber-card .chev { margin-left: auto; color: #555; }
+  .uber-pay { display: block; width: 70%; margin: 18px auto 0; padding: 12px; font: inherit; font-weight: 600; background: #000; color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
+
+  /* PayPal-style P2P */
+  .pp-head { height: 56px; background: linear-gradient(90deg, #0070e0, #003087); color: #fff; display: flex; align-items: center; padding: 0 18px; font-weight: 800; font-style: italic; font-size: 1.25rem; letter-spacing: .2px; }
+  .pp-body { padding: 18px 14px 14px; }
+  .pp-to { text-align: center; color: #555; font-size: 1.05rem; margin-bottom: 8px; }
+  .pp-amount { display: flex; justify-content: center; align-items: baseline; gap: 10px; margin-bottom: 14px; color: #333; }
+  .pp-amount .cur { font-size: .9rem; }
+  .pp-amount .val { font-size: 1.6rem; min-width: 2ch; text-align: center; }
+  .pp-note { display: block; width: 100%; padding: 8px 10px; font: inherit; font-size: .88rem; font-style: italic; color: #666; border: 1px solid #ccc; border-radius: 4px; background: #fff; margin-bottom: 12px; }
+  .pp-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .pp-btns button { padding: 11px; font: inherit; font-size: .92rem; background: #0070e0; color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
+  .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .keypad button { padding: 9px 0; font: inherit; font-size: .9rem; color: #444; background: #fff; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
+  .keypad .wide { grid-column: span 2; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+  <main class="card" id="app" aria-live="polite"></main>
+</div>
+
+<script>
+/* ===== Settings you may want to edit ===== */
+var CONFIG = {
+  // Paste your Apps Script web app URL here (ends in /exec). Empty = preview mode, nothing is saved.
+  endpoint: '',
+  university: 'Stockholm University',
+  contact: 'tom.vaihinger@student.uibk.ac.at',
+  minutes: 3,
+  readSeconds: 15,     // minimum time on the scenario page (Study 1: 15 s)
+  total: 30,           // ride price
+  share: 15,           // participant's share
+  currency: '€',  // euro sign
+  version: 'v1-paypal-eur-negative'
+};
+
+/* ===== State ===== */
+var STEPS = ['consent', 'nationality', 'friend', 'scenario', 'payment', 'satisfaction', 'followup', 'demographics', 'attention', 'submit'];
+var S = { step: 0, friend: '', cond: null, test: false, data: {}, t0: null, tPage: null };
+
+var app = document.getElementById('app');
+var bar = document.getElementById('bar');
+app.addEventListener('change', function () { setErr(''); });
+app.addEventListener('input', function () { setErr(''); });
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function money(n) { return CONFIG.currency + n; }
+function F() { return esc(S.friend); }
+function secondsSince(t) { return Math.round((Date.now() - t) / 100) / 10; }
+function newId() {
+  try { if (window.crypto && crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+  return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+function storeGet(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } }
+function storeSet(k, v) { try { window.localStorage.setItem(k, v); } catch (e) {} }
+
+function show(html) {
+  app.innerHTML = html;
+  bar.style.width = Math.round(S.step / (STEPS.length - 1) * 100) + '%';
+  window.scrollTo(0, 0);
+  S.tPage = Date.now();
+}
+function go(name) {
+  S.step = STEPS.indexOf(name);
+  PAGES[name]();
+}
+function $(id) { return document.getElementById(id); }
+function setErr(msg) { var e = $('err'); if (e) e.textContent = msg || ''; }
+
+/* 7-point scale with end labels only, as in the original study */
+function scale(name, label, lo, hi) {
+  var cells = '';
+  for (var i = 1; i <= 7; i++) {
+    cells += '<label><input type="radio" name="' + name + '" value="' + i + '"><span>' + i + '</span></label>';
+  }
+  return '<div class="q"><div class="q-label" id="lbl-' + name + '">' + label + '</div>' +
+    '<div class="scale" role="radiogroup" aria-labelledby="lbl-' + name + '">' + cells + '</div>' +
+    '<div class="anchors"><span>1 = ' + lo + '</span><span>7 = ' + hi + '</span></div></div>';
+}
+function choices(name, label, opts) {
+  var items = opts.map(function (o) {
+    return '<label><input type="radio" name="' + name + '" value="' + o[0] + '"><span>' + o[1] + '</span></label>';
+  }).join('');
+  return '<div class="q"><div class="q-label" id="lbl-' + name + '">' + label + '</div>' +
+    '<div class="choices" role="radiogroup" aria-labelledby="lbl-' + name + '">' + items + '</div></div>';
+}
+function picked(name) {
+  var el = document.querySelector('input[name="' + name + '"]:checked');
+  return el ? el.value : null;
+}
+function nextBtn(label) { return '<div class="err" id="err" role="alert"></div><button class="btn" id="next">' + (label || 'Continue') + '</button>'; }
+
+/* ===== Pages ===== */
+var PAGES = {
+
+  consent: function () {
+    show(
+      '<h1>Shared ride study</h1>' +
+      '<p>Thank you for your interest in this study. It is part of a student project in the seminar Buyer Behaviour at ' + esc(CONFIG.university) + '. ' +
+      'You will read a short scenario, complete a simulated payment and answer a few questions. It takes about ' + CONFIG.minutes + ' minutes.</p>' +
+      '<p>Taking part is voluntary and you can stop at any time by closing this page. We do not collect your name or contact details. ' +
+      'Your answers are anonymous and are only used for this course project. No real payment is made.</p>' +
+      '<p class="muted">Questions about the study: ' + esc(CONFIG.contact) + '</p>' +
+      '<label class="check"><input type="checkbox" id="agree"><span>I am at least 18 years old and agree to take part.</span></label>' +
+      nextBtn('Start')
+    );
+    $('next').onclick = function () {
+      if (!$('agree').checked) return setErr('Please confirm to continue.');
+      S.t0 = Date.now();
+      S.data.started_at = new Date().toISOString();
+      window.addEventListener('beforeunload', warnLeave);
+      go('nationality');
+    };
+  },
+
+  nationality: function () {
+    show(
+      choices('nationality', 'What is your nationality?', [
+        ['swedish', 'Swedish (including dual nationality)'],
+        ['other', 'Other']
+      ]) + nextBtn()
+    );
+    $('next').onclick = function () {
+      var v = picked('nationality');
+      if (!v) return setErr('Please choose an answer.');
+      S.data.nationality = v;
+      go('friend');
+    };
+  },
+
+  friend: function () {
+    show(
+      '<div class="q"><div class="q-label"><label for="fname">Please type the first name of a friend you would likely travel with in an Uber to the airport.</label></div>' +
+      '<input type="text" id="fname" maxlength="30" autocomplete="off" autocapitalize="words" spellcheck="false"></div>' +
+      '<p class="muted">The name is only used to personalize the next pages. It is not saved.</p>' +
+      nextBtn()
+    );
+    $('fname').focus();
+    $('next').onclick = function () {
+      var v = $('fname').value.trim().replace(/\s+/g, ' ');
+      if (!/\p{L}/u.test(v)) return setErr('Please type a first name.');
+      S.friend = v.charAt(0).toUpperCase() + v.slice(1);
+      go('scenario');
+    };
+  },
+
+  scenario: function () {
+    var f = F();
+    var payline = S.cond === 'indirect'
+      ? 'Since ' + f + ' called the Uber, ' + f + ' pays the ' + money(CONFIG.total) + ' total to Uber. You then pay ' + f + ' your ' + money(CONFIG.share) + ' share using PayPal.'
+      : 'You pay ' + money(CONFIG.share) + ' directly to Uber. ' + f + ' also pays their ' + money(CONFIG.share) + ' share to Uber.';
+    show(
+      '<p class="muted">Please read the following scenario carefully. You can continue after ' + CONFIG.readSeconds + ' seconds.</p>' +
+      '<div class="scenario">' +
+      '<p>You and ' + f + ' just realized that you are both leaving town for the holidays, and your flights leave at a similar time. ' +
+      'The two of you decided to share an Uber. ' + f + ' called for the Uber to the airport because their phone had better reception.</p>' +
+      '<p>The app showed the closest driver (4.8 rating) as 5 minutes away, but the car arrived 15 minutes late. ' +
+      'When you got in, the car smelled of smoke and the back seat was dirty. The driver was unfriendly, ignored your request to turn the music down, ' +
+      'and talked on the phone for most of the drive. Because of the late pickup, you got to the airport later than planned and had to rush through check-in, ' +
+      'but you both made your flights. The 20-minute ride costs ' + money(CONFIG.total) + ' in total.</p>' +
+      '<p class="payline">' + payline + '</p>' +
+      '</div>' +
+      '<div class="err" id="err" role="alert"></div><button class="btn" id="next" disabled>Continue</button>'
+    );
+    var left = CONFIG.readSeconds;
+    var btn = $('next');
+    btn.textContent = 'Continue (' + left + ')';
+    var timer = setInterval(function () {
+      left -= 1;
+      if (left <= 0) {
+        clearInterval(timer);
+        btn.disabled = false;
+        btn.textContent = 'Continue';
+      } else {
+        btn.textContent = 'Continue (' + left + ')';
+      }
+    }, 1000);
+    btn.onclick = function () {
+      if (btn.disabled) return;
+      S.data.scenario_seconds = secondsSince(S.tPage);
+      go('payment');
+    };
+  },
+
+  payment: function () {
+    if (S.cond === 'indirect') paypalScreen(); else uberScreen();
+  },
+
+  satisfaction: function () {
+    show(
+      scale('sat_spend', 'How did you feel about spending the money?', 'regret I did that', 'glad I did that') +
+      scale('sat_price', 'How did you feel about the price that you paid?', 'definitely a bad deal', 'definitely a good deal') +
+      scale('sat_decision', 'I am satisfied with my decision to purchase an Uber ride.', 'strongly disagree', 'strongly agree') +
+      nextBtn()
+    );
+    $('next').onclick = function () {
+      var keys = ['sat_spend', 'sat_price', 'sat_decision'];
+      var vals = keys.map(picked);
+      if (vals.indexOf(null) !== -1) return setErr('Please answer all questions.');
+      keys.forEach(function (k, i) { S.data[k] = Number(vals[i]); });
+      go('followup');
+    };
+  },
+
+  followup: function () {
+    show(
+      scale('efficiency', 'How efficient was it to pay for Uber here in this scenario?', 'not at all', 'very much') +
+      scale('awkward', 'It was awkward traveling to the airport with my friend.', 'strongly disagree', 'strongly agree') +
+      scale('ride_rating', 'How would you rate the Uber ride itself (pickup, car and driver)?', 'very bad', 'very good') +
+      nextBtn()
+    );
+    $('next').onclick = function () {
+      var keys = ['efficiency', 'awkward', 'ride_rating'];
+      var vals = keys.map(picked);
+      if (vals.indexOf(null) !== -1) return setErr('Please answer all questions.');
+      keys.forEach(function (k, i) { S.data[k] = Number(vals[i]); });
+      go('demographics');
+    };
+  },
+
+  demographics: function () {
+    show(
+      '<div class="q"><div class="q-label"><label for="age">How old are you?</label></div>' +
+      '<input type="number" id="age" inputmode="numeric" min="18" max="99" step="1"></div>' +
+      choices('gender', 'What is your gender?', [
+        ['female', 'Female'], ['male', 'Male'], ['other', 'Non-binary / other'], ['na', 'Prefer not to answer']
+      ]) +
+      nextBtn()
+    );
+    $('next').onclick = function () {
+      var age = Number($('age').value);
+      if (!Number.isInteger(age) || age < 18 || age > 99) return setErr('Please enter your age in years (18 to 99).');
+      var g = picked('gender');
+      if (!g) return setErr('Please choose an answer for gender.');
+      S.data.age = age;
+      S.data.gender = g;
+      go('attention');
+    };
+  },
+
+  attention: function () {
+    show(
+      choices('attn', 'In the payment task, to whom did you pay your money?', [
+        ['friend', 'My friend'], ['uber', 'Uber'], ['dont_remember', 'Don’t remember']
+      ]) + nextBtn('Submit')
+    );
+    $('next').onclick = function () {
+      var v = picked('attn');
+      if (!v) return setErr('Please choose an answer.');
+      S.data.attn_answer = v;
+      S.data.attn_pass = (v === (S.cond === 'indirect' ? 'friend' : 'uber')) ? 1 : 0;
+      go('submit');
+    };
+  },
+
+  submit: function () {
+    show('<h1>Saving your answers…</h1><p class="muted">Please keep this page open for a moment.</p>');
+    var d = S.data;
+    d.finished_at = new Date().toISOString();
+    d.total_seconds = secondsSince(S.t0);
+    d.sat_index = Math.round((d.sat_spend + d.sat_price + d.sat_decision) / 3 * 100) / 100;
+    save(d, 0);
+  }
+};
+
+/* ===== Payment screens ===== */
+function paymentDone(btnWrap) {
+  S.data.payment_seconds = secondsSince(S.tPage);
+  btnWrap.innerHTML = '<div class="sent">✓ Payment sent</div>';
+  setTimeout(function () { go('satisfaction'); }, 1200);
+}
+
+function uberScreen() {
+  show(
+    '<p class="pay-intro">Please pay your ' + money(CONFIG.share) + ' share to Uber in the app below.</p>' +
+    '<div class="phone uber" role="group" aria-label="Uber payment">' +
+      '<div class="uber-title">Trip to the airport</div>' +
+      '<div class="uber-ride">' +
+        '<svg width="56" height="30" viewBox="0 0 56 30" aria-hidden="true"><path d="M6 19c0-3 2-4 5-5l7-6c2-1 4-2 7-2h9c3 0 5 1 7 3l5 5c4 0 7 2 7 5v3c0 1-1 2-2 2H8c-1 0-2-1-2-2z" fill="#e9e9e9" stroke="#bdbdbd"/><path d="M20 9h9v5H15zM31 9h4c2 0 3 1 4 2l2 3h-10z" fill="#9fb4c7"/><circle cx="16" cy="24" r="4" fill="#333"/><circle cx="42" cy="24" r="4" fill="#333"/></svg>' +
+        '<div><div class="uber-name">UberX</div><div class="uber-sub">Your share of ' + money(CONFIG.total + '.00') + '</div></div>' +
+        '<div class="uber-price">' + money(CONFIG.share + '.00') + '</div>' +
+      '</div>' +
+      '<div class="uber-card"><span class="visa">VISA</span><span>Visa ••••</span><span class="chev">›</span></div>' +
+      '<div id="paywrap"><button class="uber-pay" id="pay">Pay</button></div>' +
+    '</div>'
+  );
+  $('pay').onclick = function () { paymentDone($('paywrap')); };
+}
+
+function paypalScreen() {
+  var amount = String(CONFIG.share);
+  var keys = '';
+  ['1', '2', '3', '4', '5', '6', '7', '8', '9'].forEach(function (k) { keys += '<button type="button" data-k="' + k + '">' + k + '</button>'; });
+  keys += '<button type="button" class="wide" data-k="del">Delete</button><button type="button" data-k="0">0</button>';
+  show(
+    '<p class="pay-intro">Please pay your ' + money(CONFIG.share) + ' share to ' + F() + ' using PayPal below.</p>' +
+    '<div class="phone" role="group" aria-label="PayPal payment">' +
+      '<div class="pp-head">PayPal</div>' +
+      '<div class="pp-body">' +
+        '<div class="pp-to">' + F() + '</div>' +
+        '<div class="pp-amount"><span class="cur">' + CONFIG.currency + '</span><span class="val" id="amt">' + amount + '</span></div>' +
+        '<input class="pp-note" type="text" value="Uber ride" readonly aria-label="Note">' +
+        '<div id="paywrap"><div class="pp-btns"><button type="button" id="req">Request</button><button type="button" id="pay">Pay</button></div></div>' +
+        '<div class="keypad" id="keypad">' + keys + '</div>' +
+        '<div class="pay-err" id="payerr" role="alert"></div>' +
+      '</div>' +
+    '</div>'
+  );
+  var amtEl = $('amt'), errEl = $('payerr');
+  $('keypad').onclick = function (e) {
+    var k = e.target && e.target.getAttribute('data-k');
+    if (!k) return;
+    errEl.textContent = '';
+    if (k === 'del') amount = amount.slice(0, -1);
+    else if (amount.length < 4) amount = (amount === '0' ? '' : amount) + k;
+    amtEl.textContent = amount || '0';
+  };
+  $('req').onclick = function () { errEl.textContent = 'To send your share, tap Pay.'; };
+  $('pay').onclick = function () {
+    if (Number(amount) !== CONFIG.share) {
+      errEl.textContent = 'Please enter ' + money(CONFIG.share) + ', your share of the ride.';
+      return;
+    }
+    $('keypad').style.pointerEvents = 'none';
+    paymentDone($('paywrap'));
+  };
+}
+
+/* ===== Saving ===== */
+function save(d, attempt) {
+  if (!CONFIG.endpoint) {
+    // Preview mode: no endpoint set, nothing is sent anywhere.
+    window.__lastResponse = d;
+    return thanks(true);
+  }
+  // A plain-text POST sends no Google cookies, so being signed into several Google accounts doesn't matter.
+  // Retries can't create duplicate rows: the backend skips a pid it has already saved.
+  fetch(CONFIG.endpoint, { method: 'POST', body: JSON.stringify(d), redirect: 'follow' })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      if (!res || !res.ok) throw new Error((res && res.error) || 'not saved');
+      thanks(false);
+    })
+    .catch(function () {
+      if (attempt < 2) return setTimeout(function () { save(d, attempt + 1); }, 1500);
+      show(
+        '<h1>Your answers could not be saved</h1>' +
+        '<p>Please check your internet connection and try again.</p>' +
+        '<button class="btn" id="retry">Try again</button>'
+      );
+      $('retry').onclick = function () { show('<h1>Saving your answers…</h1>'); save(d, 0); };
+    });
+}
+
+function thanks(previewOnly) {
+  window.removeEventListener('beforeunload', warnLeave);
+  if (!S.test && !previewOnly) storeSet('rideStudyDone', '1');
+  show(
+    '<h1>Thank you!</h1>' +
+    (previewOnly ? '<p class="muted">Preview mode: this page is not connected to the Google Sheet, so nothing was saved.</p>' : '<p>Your answers have been saved.</p>') +
+    '<p>About this study: we are testing whether the way you pay your share of a shared expense ' +
+    '(directly to the company, or to a friend who paid the total) affects how satisfied you are with the purchase. ' +
+    'The scenario was made up and no real payment took place.</p>' +
+    '<p>You can close this page now.</p>' +
+    (previewOnly ? '<pre id="preview" style="white-space:pre-wrap;font-size:.8rem;background:#f2f2ee;padding:10px;border-radius:8px">' + esc(JSON.stringify(S.data, null, 2)) + '</pre>' : '')
+  );
+  bar.style.width = '100%';
+}
+
+function warnLeave(e) { e.preventDefault(); e.returnValue = ''; }
+
+/* ===== Start ===== */
+function start(params) {
+  params = params || {};
+  S.test = params.test === '1';
+  var forced = S.test && (params.cond === 'direct' || params.cond === 'indirect') ? params.cond : null;
+  S.cond = forced || (Math.random() < 0.5 ? 'direct' : 'indirect');
+  S.data = {
+    pid: newId(),
+    version: CONFIG.version,
+    test: S.test ? 1 : 0,
+    condition: S.cond,
+    payment_screen: S.cond === 'indirect' ? 'paypal' : 'uber_app'
+  };
+  if (!S.test && storeGet('rideStudyDone') === '1') {
+    show('<h1>Thank you</h1><p>It looks like you have already taken part in this study from this device. You can close this page.</p>');
+    return;
+  }
+  go('consent');
+}
+
+(function init() {
+  var p = {};
+  new URLSearchParams(window.location.search).forEach(function (v, k) { p[k] = v; });
+  start(p);
+})();
+</script>
+</body>
+</html>
