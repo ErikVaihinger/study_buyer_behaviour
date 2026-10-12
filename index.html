@@ -54,11 +54,11 @@
   .choices { display: grid; gap: 8px; }
   .choices span { display: block; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
 
-  input[type=text], input[type=number] {
+  input[type=text], input[type=number], select {
     width: 100%; font: inherit; padding: 11px 12px;
     border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink);
   }
-  input[type=text]:focus, input[type=number]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  input[type=text]:focus, input[type=number]:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   .check { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0 4px; cursor: pointer; }
   .check input { margin-top: 5px; width: 18px; height: 18px; flex: none; }
 
@@ -125,8 +125,38 @@ var CONFIG = {
   total: 30,           // ride price
   share: 15,           // participant's share
   currency: '€',  // euro sign
-  version: 'v1-paypal-eur-negative'
+  version: 'v2-paypal-eur-negative'
 };
+
+/* Country list for the nationality question: UN member states, plus Vatican City, Palestine, Kosovo and Taiwan.
+   Sweden is shown first (see PAGES.nationality), so it is not repeated here. */
+var COUNTRIES = [
+  'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria', 'Azerbaijan',
+  'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi',
+  'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Costa Rica', 'Côte d’Ivoire', 'Croatia', 'Cuba', 'Cyprus', 'Czechia',
+  'Democratic Republic of the Congo', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic',
+  'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia',
+  'Fiji', 'Finland', 'France',
+  'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana',
+  'Haiti', 'Honduras', 'Hungary',
+  'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy',
+  'Jamaica', 'Japan', 'Jordan',
+  'Kazakhstan', 'Kenya', 'Kiribati', 'Kosovo', 'Kuwait', 'Kyrgyzstan',
+  'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg',
+  'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania', 'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar',
+  'Namibia', 'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Norway',
+  'Oman',
+  'Pakistan', 'Palau', 'Palestine', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal',
+  'Qatar',
+  'Republic of the Congo', 'Romania', 'Russia', 'Rwanda',
+  'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'São Tomé and Príncipe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Switzerland', 'Syria',
+  'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Timor-Leste', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu',
+  'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States', 'Uruguay', 'Uzbekistan',
+  'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam',
+  'Yemen',
+  'Zambia', 'Zimbabwe',
+  'Other'
+];
 
 /* ===== State ===== */
 var STEPS = ['consent', 'nationality', 'friend', 'scenario', 'payment', 'satisfaction', 'followup', 'demographics', 'attention', 'submit'];
@@ -198,12 +228,19 @@ var PAGES = {
       'You will read a short scenario, complete a simulated payment and answer a few questions. It takes about ' + CONFIG.minutes + ' minutes.</p>' +
       '<p>Taking part is voluntary and you can stop at any time by closing this page. We do not collect your name or contact details. ' +
       'Your answers are anonymous and are only used for this course project. No real payment is made.</p>' +
+      '<p>To prevent the same device from taking part twice, this page saves one small marker in your browser (local storage, not a cookie) when you finish, and looks for it if you start again. ' +
+      'The marker contains no personal information and you can delete it in your browser settings.</p>' +
       '<p class="muted">Questions about the study: ' + esc(CONFIG.contact) + '</p>' +
-      '<label class="check"><input type="checkbox" id="agree"><span>I am at least 18 years old and agree to take part.</span></label>' +
+      '<label class="check"><input type="checkbox" id="agree"><span>I am at least 18 years old and agree to take part as described above.</span></label>' +
       nextBtn('Start')
     );
     $('next').onclick = function () {
       if (!$('agree').checked) return setErr('Please confirm to continue.');
+      // Browser storage is only read after consent has been given.
+      if (!S.test && storeGet('rideStudyDone') === '1') {
+        show('<h1>Thank you</h1><p>It looks like you have already taken part in this study from this device. You can close this page.</p>');
+        return;
+      }
       S.t0 = Date.now();
       S.data.started_at = new Date().toISOString();
       window.addEventListener('beforeunload', warnLeave);
@@ -212,15 +249,20 @@ var PAGES = {
   },
 
   nationality: function () {
+    // Nothing is preselected: the first option is a disabled placeholder, so the question can't be skipped unnoticed.
+    var opts = '<option value="" disabled selected>Select your country</option>' +
+      '<option value="Sweden">Sweden</option>' +
+      '<option value="" disabled>──────────</option>' +
+      COUNTRIES.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + '</option>'; }).join('');
     show(
-      choices('nationality', 'What is your nationality?', [
-        ['swedish', 'Swedish (including dual nationality)'],
-        ['other', 'Other']
-      ]) + nextBtn()
+      '<div class="q"><div class="q-label"><label for="country">What is your nationality?</label></div>' +
+      '<select id="country" autocomplete="off">' + opts + '</select>' +
+      '<p class="muted" style="margin:8px 0 0">If you have more than one, choose the country you identify with most.</p></div>' +
+      nextBtn()
     );
     $('next').onclick = function () {
-      var v = picked('nationality');
-      if (!v) return setErr('Please choose an answer.');
+      var v = $('country').value;
+      if (!v) return setErr('Please select your country.');
       S.data.nationality = v;
       go('friend');
     };
@@ -478,10 +520,6 @@ function start(params) {
     condition: S.cond,
     payment_screen: S.cond === 'indirect' ? 'paypal' : 'uber_app'
   };
-  if (!S.test && storeGet('rideStudyDone') === '1') {
-    show('<h1>Thank you</h1><p>It looks like you have already taken part in this study from this device. You can close this page.</p>');
-    return;
-  }
   go('consent');
 }
 
