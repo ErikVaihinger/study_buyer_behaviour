@@ -290,7 +290,7 @@ var PAGES = {
       ? 'Since ' + f + ' called the Uber, ' + f + ' pays the ' + money(CONFIG.total) + ' total to Uber. You then pay ' + f + ' your ' + money(CONFIG.share) + ' share using PayPal.'
       : 'You pay ' + money(CONFIG.share) + ' directly to Uber. ' + f + ' also pays their ' + money(CONFIG.share) + ' share to Uber.';
     show(
-      '<p class="muted">Please read the following scenario carefully. You can continue after ' + CONFIG.readSeconds + ' seconds.</p>' +
+      '<p class="muted">Please read the following scenario carefully. You can continue after ' + CONFIG.readSeconds + ' seconds. Once you continue, you cannot return to it.</p>' +
       '<div class="scenario">' +
       '<p>You and ' + f + ' just realized that you are both leaving town for the holidays, and your flights leave at a similar time.</p>' +
       '<p>The two of you decided to share an Uber. ' + f + ' called for the Uber to the airport because their phone had better reception.</p>' +
