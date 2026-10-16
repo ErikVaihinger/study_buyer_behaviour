@@ -224,14 +224,17 @@ var PAGES = {
   consent: function () {
     show(
       '<h1>Shared ride study</h1>' +
+      '<p><strong>Welcome to our study!</strong></p>' +
       '<p>Thank you for your interest in this study. It is part of a student project in the seminar Buyer Behaviour at ' + esc(CONFIG.university) + '. ' +
-      'You will read a short scenario, complete a simulated payment and answer a few questions. It takes about ' + CONFIG.minutes + ' minutes.</p>' +
-      '<p>Taking part is voluntary and you can stop at any time by closing this page. We do not collect your name or contact details. ' +
-      'Your answers are anonymous and are only used for this course project. No real payment is made.</p>' +
+      'You will read a short scenario, complete a simulated payment and answer a few questions. It takes about <strong>' + CONFIG.minutes + ' minutes</strong>.</p>' +
+      '<p><strong>Anonymity and data protection</strong><br>' +
+      'We do not collect your name or contact details. Your answers are anonymous and are only used for this course project. No real payment is made.</p>' +
       '<p>To prevent the same device from taking part twice, this page saves one small marker in your browser (local storage, not a cookie) when you finish, and looks for it if you start again. ' +
       'The marker contains no personal information and you can delete it in your browser settings.</p>' +
-      '<p class="muted">Questions about the study: ' + esc(CONFIG.contact) + '</p>' +
+      '<p><strong>Participation and Consent</strong><br>' +
+      'Participation is voluntary. You can stop at any time by closing this page.</p>' +
       '<label class="check"><input type="checkbox" id="agree"><span>I am at least 18 years old and agree to take part as described above.</span></label>' +
+      '<p class="muted">If you have any questions, please contact: ' + esc(CONFIG.contact) + '</p>' +
       nextBtn('Start')
     );
     $('next').onclick = function () {
